@@ -588,11 +588,75 @@ netmask_to_cidr() {
     return 0
 }
 
+# Function to validate repository
+validate_repository() {
+    local repo_url="$1"
+    local max_retries=3
+    local retry_count=0
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if wget --spider "$repo_url" 2>/dev/null; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        sleep 2
+    done
+    
+    return 1
+}
+
+# Function to update package lists with retry
+update_package_lists() {
+    local max_retries=3
+    local retry_count=0
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if apt-get update; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        sleep 5
+    done
+    
+    return 1
+}
+
+# Function to install package with retry
+install_package() {
+    local package="$1"
+    local max_retries=3
+    local retry_count=0
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if apt-get install -y "$package"; then
+            return 0
+        fi
+        retry_count=$((retry_count + 1))
+        sleep 5
+    done
+    
+    return 1
+}
+
 # Create log file
 touch /var/log/zabbix_proxy_install.log
 chmod 644 /var/log/zabbix_proxy_install.log
 
 log_message "Starting Zabbix Proxy installation..."
+
+# Validate and update repositories
+log_message "Validating repositories..."
+if ! validate_repository "https://repo.zabbix.com/zabbix/"; then
+    log_message "ERROR: Could not validate Zabbix repository"
+    exit 1
+fi
+
+# Update package lists with retry
+log_message "Updating package lists..."
+if ! update_package_lists; then
+    log_message "ERROR: Failed to update package lists after multiple attempts"
+    exit 1
+fi
 
 # Get Zabbix version
 echo "Please select the Zabbix version to install:"
