@@ -97,7 +97,6 @@ log_message() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a /var/log/zabbix_proxy_install.log
 }
 
-# Function to check command status
 check_status() {
     if [ $? -eq 0 ]; then
         log_message "SUCCESS: $1"
@@ -106,6 +105,21 @@ check_status() {
         exit 1
     fi
 }
+
+# Workaround for invalid Release file due to system time issues
+# (must be before any apt-get usage)
+echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99ignore-release-validity
+echo 'Acquire::Check-Date "false";' >> /etc/apt/apt.conf.d/99ignore-release-validity
+
+# Ensure system time is correct before proceeding
+log_message "Synchronizing system time..."
+if ! command -v ntpdate >/dev/null 2>&1; then
+    log_message "ntpdate not found, installing..."
+    apt-get update && apt-get install -y ntpdate
+    check_status "ntpdate installation"
+fi
+ntpdate pool.ntp.org
+check_status "System time synchronization"
 
 # Function to get user input with clear prompt
 get_input() {
