@@ -7,6 +7,7 @@
 set -e
 
 CONFIG_FILE="/etc/zabbix/zabbix_proxy.conf"
+SQLITE_DB_PATH="/var/lib/zabbix/zabbix_proxy.db"
 
 update_zabbix_proxy_conf() {
   local server_ip="$1"
@@ -29,6 +30,13 @@ update_zabbix_proxy_conf() {
   # Ensure they exist
   grep -q "^DBHost=" "$CONFIG_FILE" || echo "DBHost=localhost" >> "$CONFIG_FILE"
   grep -q "^DBPassword=" "$CONFIG_FILE" || echo "DBPassword=$db_password" >> "$CONFIG_FILE"
+
+  # Set DBName for SQLite
+  if grep -q "^DBName=" "$CONFIG_FILE"; then
+    sed -i "s|^DBName=.*|DBName=$SQLITE_DB_PATH|" "$CONFIG_FILE"
+  else
+    echo "DBName=$SQLITE_DB_PATH" >> "$CONFIG_FILE"
+  fi
 
   # Set ProxyMode=1 (active proxy)
   if grep -q "^ProxyMode=" "$CONFIG_FILE"; then
